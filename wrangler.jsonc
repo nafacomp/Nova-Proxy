@@ -1,17 +1,74 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
+
+  // نام ورکر شما در کلودفلر. هرچه می‌خواهید بگذارید.
+  // آدرس نهایی: https://<name>.<subdomain>.workers.dev
   "name": "web-app",
+
   "main": "worker.js",
+
+  // ⚠️ این دو خط را دست نزنید.
+  // worker.js از "node:async_hooks" ایمپورت می‌کند (AsyncLocalStorage).
+  // بدون nodejs_compat ورکر بالا نمی‌آید و دقیقاً همان خطای
+  // «No such module "node:async_hooks"» و بعد 1101 را می‌گیرید.
+  // compatibility_date هم باید 2024-09-23 یا جدیدتر باشد.
   "compatibility_date": "2026-07-30",
   "compatibility_flags": ["nodejs_compat"],
+
+  // دیتابیس D1. اسم بایندینگ حتماً باید DB بماند.
+  // database_id را از خروجی «wrangler d1 create nova-db» بردارید.
   "d1_databases": [
-    { "binding": "DB" }
+    {
+      "binding": "DB",
+      "database_name": "nova-db",
+      "database_id": "PUT-YOUR-D1-DATABASE-ID-HERE"
+    }
   ],
+
+  // فضای KV. اسم بایندینگ حتماً باید KV بماند.
+  // id را از خروجی «wrangler kv namespace create KV» بردارید.
   "kv_namespaces": [
-    { "binding": "KV" }
+    {
+      "binding": "KV",
+      "id": "PUT-YOUR-KV-NAMESPACE-ID-HERE"
+    }
   ],
+
   "workers_dev": true,
   "preview_urls": true,
+
+  // متغیرهای غیرحساس برای مهار مصرف CPU و جلوگیری از 1101.
+  // این‌ها رمز نیستند، پس اینجا امن هستند.
+  "vars": {
+    // سقف تعداد کاربر. پیش‌فرض خودِ کد 10 است و پیام خطایش می‌گوید
+    // «برای ماندن در محدودیت CPU کلودفلر». برای استفادهٔ شخصی همین کافی است.
+    // هرچه بالاتر ببرید، ریسک 1101 و ابیوز بیشتر می‌شود.
+    "NOVA_MAX_USERS": "5",
+
+    // تعداد اتصال هم‌زمان در هر دیال مستقیم (۱ تا ۸، پیش‌فرض ۲).
+    // ۱ یعنی کمترین مصرف CPU. برای تک‌کاربره بهترین گزینه است.
+    "DIRECT_DIAL_CONCURRENCY": "1",
+
+    // سقف صف آپلود بر حسب مگابایت (۸ تا ۶۴، پیش‌فرض ۱۶).
+    "UPLOAD_QUEUE_MB": "16",
+
+    // سقف مصرف ماهانه بر حسب گیگابایت. بعد از عبور، سرویس 503 می‌دهد.
+    // این مهم‌ترین محافظ در برابر اخطار abuse کلودفلر است. 0 یعنی بی‌نهایت.
+    "MONTHLY_CAP_GB": "100",
+
+    // کارهای نگهداری پس‌زمینه (کران). اگر لازم ندارید "0" بگذارید
+    // تا یک اجرای اضافی روزانه هم نداشته باشید.
+    "ENABLE_CRON": "1"
+  },
+
+  // کران تریگر برای کارهای نگهداری پس‌زمینه.
+  // فقط وقتی کار می‌کند که متغیر ENABLE_CRON=1 را هم ست کنید.
+  "triggers": {
+    "crons": ["17 4 * * *"]
+  },
+
+  // لاگ‌ها فقط داخل حساب کلودفلر خودتان می‌مانند و جایی ارسال نمی‌شوند.
+  // اگر اصلاً لاگ نمی‌خواهید، enabled را false کنید.
   "observability": {
     "enabled": true,
     "logs": {
@@ -24,4 +81,8 @@
       "head_sampling_rate": 0.01
     }
   }
+
+  // متغیرهای حساس (ADMIN، KEY، UUID، PROXYIP، NOVA_CLAIM_TOKEN و ...)
+  // را اینجا ننویسید. با دستور زیر به‌صورت رمزنگاری‌شده ست کنید:
+  //   wrangler secret put ADMIN
 }
