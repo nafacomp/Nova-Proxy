@@ -15,8 +15,8 @@ bundler, or obfuscation". That claim is false. The shipped `worker.js` is a
 ~1.3 MB minified/bundled artifact produced by `scripts/build.mjs`, which is not
 published in the repository. Treat it as a binary you cannot fully audit.
 
-See `AUDIT.fa.md` for the full review, the list of removed callbacks, and the
-verification commands.
+See `README.fa.md` (section 4) for the full review, the list of removed
+callbacks, and the verification commands.
 
 To confirm the artifact you deploy matches the one reviewed here:
 
