@@ -3,6 +3,6 @@
   "released": "2026-08-11",
   "notes": "Private self-hosted build. Upstream telemetry, third-party proxy relays and author-controlled remote sources removed.",
   "worker_url": "https://raw.githubusercontent.com/nafacomp/Nova-Proxy/main/worker.js",
-  "worker_sha256": "60e2b8783cb0cf78e04c8090c6ccae6d28736e6234a9050a5ee6c14978877e15",
+  "worker_sha256": "4e294800f091689ef9d93a54c4a66f0e6d1893413c4196dd06d9da3f0ba441d4",
   "protected": true
 }

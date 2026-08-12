@@ -202,7 +202,7 @@ wrangler.jsonc                         کامنت فارسی + کران + جای
 .github/FUNDING.yml                    ❌ حذف شد
 ```
 
-هش جدید ورکر: `60e2b8783cb0cf78e04c8090c6ccae6d28736e6234a9050a5ee6c14978877e15`
+هش جدید ورکر: `4e294800f091689ef9d93a54c4a66f0e6d1893413c4196dd06d9da3f0ba441d4`
 
 اعتبارسنجی انجام‌شده: `node --check` ✅ · `verify-release.mjs` ✅ · `wrangler deploy --dry-run` ✅
 
