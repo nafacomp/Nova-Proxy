@@ -14,12 +14,13 @@
 
 | | **Nova (پنل کامل)** | **nova-mini** |
 |---|---|---|
-| پنل مدیریت وب | ✅ | ❌ |
-| چند کاربر، سهمیه، انقضا | ✅ | ❌ |
-| لینک اشتراک خودکار | ✅ | ❌ |
+| پنل مدیریت وب | ✅ کامل | ✅ ساده |
+| چند کاربر | ✅ | ✅ |
+| لینک اشتراک خودکار | ✅ | ✅ (محلی) |
+| سهمیه، انقضا، آمار | ✅ | ❌ |
 | ربات تلگرام | ✅ | ❌ |
 | تونل VLESS | ✅ | ✅ |
-| حجم | ۱٫۷ مگابایت | ۷ کیلوبایت |
+| حجم | ۱٫۷ مگابایت | ۳۳ کیلوبایت |
 | قابل خواندن؟ | مینیفای، سورس منتشر نشده | ۲۰۷ خط، کاملاً خوانا |
 
 **پیشنهاد من:**
@@ -219,8 +220,9 @@ cd examples/nova-mini
 npm install
 npx wrangler login
 
-npx wrangler secret put UUID        # با: uuidgen
-npm run check                        # ۹ تست اجرا می‌شود
+npx wrangler kv namespace create KV  # شناسه را در wrangler.jsonc بگذارید
+npx wrangler secret put CLAIM_TOKEN  # با: openssl rand -hex 16
+npm run check                        # ۲۹ تست اجرا می‌شود
 npm run deploy
 ```
 
@@ -236,6 +238,8 @@ npm run deploy
 | Path | `/` |
 | TLS | فعال |
 | SNI | همان دامنه |
+
+nova-mini حالا پنل گرافیکی هم دارد: بعد از دیپلوی به `/admin/setup?claim=<CLAIM_TOKEN>` بروید.
 
 جزئیات بیشتر: `examples/nova-mini/README.fa.md`
 

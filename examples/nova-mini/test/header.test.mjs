@@ -5,8 +5,11 @@ import { readFile } from 'node:fs/promises';
 
 // The parser is internal, so pull it out of the source for testing.
 const src = await readFile(new URL('../src/worker.js', import.meta.url), 'utf8');
+// Strip the imports and the exported handler so the remaining helpers can be
+// evaluated standalone. A data: URL cannot resolve relative imports, and the
+// helpers under test do not need them.
 const body = src
-  .replace(/^import .*$/m, '')
+  .replace(/^import [\s\S]*?;$/gm, '')
   .replace(/^export default[\s\S]*?\n};$/m, '');
 const mod = await import(
   'data:text/javascript,' +

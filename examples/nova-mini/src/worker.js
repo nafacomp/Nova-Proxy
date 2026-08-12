@@ -1,19 +1,24 @@
 /**
- * nova-mini - a minimal, readable VLESS-over-WebSocket worker.
+ * nova-mini - a readable VLESS-over-WebSocket worker with a small admin panel.
  *
  * This is real source: every line is here, nothing is minified, and there is
- * no build step. It exists to show what the actual tunnel in Nova-Proxy does,
- * stripped of the panel, the database, the Telegram bot, and the rest.
+ * no build step.
  *
- * Configure with two secrets (wrangler secret put ...):
- *   UUID     required. The VLESS client id.
- *   PROXYIP  optional. host or host:port used when a direct dial is blocked.
+ * Bindings (see wrangler.jsonc):
+ *   KV            required. Stores users, settings, and the admin password.
  *
- * Deliberately NOT included: admin panel, user management, quotas, traffic
- * accounting, subscription generation, Telegram integration. See README.
+ * Secrets (wrangler secret put ...):
+ *   CLAIM_TOKEN   recommended. Required at /admin/setup?claim=... on first run.
+ *   PROXYIP       optional. host or host:port used when a direct dial fails.
+ *   UUID          optional. Single-user fallback when no panel users exist.
+ *
+ * Files: auth.js (passwords, sessions), store.js (KV), panel.js (the UI),
+ * admin.js (routes), subscription.js (client config output).
  */
 
 import { connect } from 'cloudflare:sockets';
+import { handleHttp } from './admin.js';
+import { readUsers } from './store.js';
 
 /** Cloudflare blocks outbound TCP to port 25 to stop spam relaying. */
 const BLOCKED_PORTS = new Set([25]);
@@ -21,19 +26,22 @@ const BLOCKED_PORTS = new Set([25]);
 export default {
   async fetch(request, env, ctx) {
     try {
-      // Anything that is not a WebSocket upgrade gets a plain, boring page.
-      // Nothing here identifies the worker as a proxy.
-      if (request.headers.get('Upgrade') !== 'websocket') {
-        return new Response('Not found', {
-          status: 404,
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        });
+      // The tunnel is checked first and never touches KV before the handshake,
+      // so panel traffic can never slow a connection down.
+      if (request.headers.get('Upgrade') === 'websocket') {
+        return handleTunnel(request, env, ctx);
       }
 
-      const uuid = (env.UUID || '').trim().toLowerCase();
-      if (!uuid) return new Response('Not configured', { status: 500 });
+      if (env.KV) {
+        const response = await handleHttp(request, env, new URL(request.url));
+        if (response) return response;
+      }
 
-      return handleTunnel(request, uuid, env.PROXYIP || '', ctx);
+      // Anything unrecognised looks like an ordinary empty site.
+      return new Response('Not found', {
+        status: 404,
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      });
     } catch (error) {
       // Never leak a stack trace to a prober.
       console.error('fetch failed:', error?.message || error);
@@ -42,7 +50,7 @@ export default {
   },
 };
 
-function handleTunnel(request, uuid, proxyIp, ctx) {
+async function handleTunnel(request, env, ctx) {
   const pair = new WebSocketPair();
   const [client, server] = Object.values(pair);
   server.accept();
@@ -51,7 +59,7 @@ function handleTunnel(request, uuid, proxyIp, ctx) {
   // a round trip. If present, they are the start of the stream.
   const early = base64ToBytes(request.headers.get('sec-websocket-protocol') || '');
 
-  pump(server, uuid, proxyIp, early, ctx).catch((error) => {
+  pump(server, env, early, ctx).catch((error) => {
     console.error('tunnel closed:', error?.message || error);
     closeQuietly(server);
   });
@@ -60,16 +68,43 @@ function handleTunnel(request, uuid, proxyIp, ctx) {
 }
 
 /**
+ * Collect every uuid allowed to connect: panel users first, then the UUID
+ * secret as a fallback so the worker still works before any user is created.
+ */
+async function allowedUuids(env) {
+  const uuids = new Set();
+  if (env.KV) {
+    try {
+      for (const user of await readUsers(env)) {
+        if (user?.uuid && user.enabled !== false) uuids.add(String(user.uuid).toLowerCase());
+      }
+    } catch (error) {
+      console.error('could not read users:', error?.message || error);
+    }
+  }
+  const fallback = String(env.UUID || '').trim().toLowerCase();
+  if (fallback) uuids.add(fallback);
+  return uuids;
+}
+
+/**
  * Read the VLESS header, open the upstream socket, then splice the two
  * streams together until either side closes.
  */
-async function pump(ws, uuid, proxyIp, early, ctx) {
+async function pump(ws, env, early, ctx) {
   const inbound = socketToStream(ws, early);
   const reader = inbound.getReader();
 
+  const uuids = await allowedUuids(env);
+  if (uuids.size === 0) {
+    closeQuietly(ws);
+    reader.releaseLock();
+    throw new Error('no users configured: add one in /admin or set the UUID secret');
+  }
+
   let header;
   try {
-    header = await readVlessHeader(reader, uuid);
+    header = await readVlessHeader(reader, uuids);
   } catch (error) {
     // Wrong uuid or malformed header: close without explaining why.
     closeQuietly(ws);
@@ -91,6 +126,7 @@ async function pump(ws, uuid, proxyIp, early, ctx) {
   try {
     socket = await dial(host, port, payload);
   } catch (directError) {
+    const proxyIp = String(env.PROXYIP || '').trim();
     if (!proxyIp) {
       closeQuietly(ws);
       reader.releaseLock();
@@ -162,8 +198,13 @@ async function dial(hostname, port, firstChunk) {
  * Layout: version(1) uuid(16) optLen(1) opt(optLen) cmd(1) port(2) type(1)
  *         address(variable) then the payload.
  * Only the TCP command (0x01) is handled; UDP is rejected.
+ *
+ * `allowed` is a Set of lowercase uuid strings, so several panel users can
+ * share one worker. A plain string is accepted too, which keeps the tests
+ * and any single-user setup working unchanged.
  */
-async function readVlessHeader(reader, expectedUuid) {
+async function readVlessHeader(reader, allowed) {
+  const permitted = allowed instanceof Set ? allowed : new Set([String(allowed).toLowerCase()]);
   let buffer = new Uint8Array(0);
 
   // Pull from the stream until at least `need` bytes are buffered.
@@ -182,7 +223,7 @@ async function readVlessHeader(reader, expectedUuid) {
   await need(24);
   const version = buffer[0];
 
-  if (bytesToUuid(buffer.subarray(1, 17)) !== expectedUuid) {
+  if (!permitted.has(bytesToUuid(buffer.subarray(1, 17)))) {
     throw new Error('uuid mismatch');
   }
 

@@ -1,7 +1,27 @@
 {
   "name": "my-tunnel",
   "main": "src/worker.js",
+
+  // ⚠️ worker.js از node:async_hooks استفاده نمی‌کند، ولی nodejs_compat را
+  // نگه دارید تا اگر بعداً کدی اضافه کردید مشکلی پیش نیاید.
   "compatibility_date": "2026-07-30",
   "compatibility_flags": ["nodejs_compat"],
-  "workers_dev": true
+
+  // فضای KV برای ذخیرهٔ کاربران، تنظیمات و رمز ادمین.
+  // شناسه را با «npm run setup» یا دستی پر کنید:
+  //   npx wrangler kv namespace create KV
+  "kv_namespaces": [
+    { "binding": "KV", "id": "PUT-YOUR-KV-NAMESPACE-ID-HERE" }
+  ],
+
+  "workers_dev": true,
+
+  "vars": {
+    // سقف تعداد کاربر. برای استفادهٔ شخصی کم نگهش دارید.
+    "MAX_USERS": "5"
+  }
+
+  // رمزها را اینجا ننویسید. با دستور زیر ست کنید:
+  //   npx wrangler secret put CLAIM_TOKEN
+  //   npx wrangler secret put PROXYIP
 }
