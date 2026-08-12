@@ -167,6 +167,7 @@ npm run readable      # analysis/worker.readable.js
 |---|---|
 | `START-HERE.fa.md` | **راهنمای صفر تا صد** — از اینجا شروع کنید |
 | `HOWTO.fa.md` | راهنمای داشبورد کلودفلر (بدون ترمینال) + نسخهٔ تک‌فایلی |
+| `HOWTO-STEP-BY-STEP.fa.md` | راهنمای مو به مو با جزئیات Secret و عیب‌یابی |
 | `AUDIT.fa.md` | گزارش امنیتی کامل |
 | `ERROR-1101.fa.md` | تحلیل خطای ۱۱۰۱ |
 | `DEPLOY.fa.md` | جزئیات نصب |
