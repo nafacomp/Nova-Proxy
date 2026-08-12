@@ -180,6 +180,30 @@ export function dashboardPage() {
   </div>
 
   <div class="card">
+    <h2>تولید لیست برای اسکن</h2>
+    <p class="muted" style="margin:0 0 12px">
+      ورکر نمی‌تواند خودش آی‌پی اسکن کند (کلودفلر اتصال TCP خام به آی‌پی را
+      مسدود می‌کند). ولی می‌تواند لیست کاندیدا از رنج‌های رسمی کلودفلر
+      بسازد تا با یک اسکنر روی کامپیوتر خودتان تستش کنید.
+    </p>
+    <div class="row">
+      <div><label for="sp-count">تعداد آی‌پی</label>
+        <input id="sp-count" type="number" min="16" max="2048" value="512"></div>
+      <div><label for="sp-port">پورت</label>
+        <select id="sp-port">
+          <option>443</option><option>2053</option><option>2083</option>
+          <option>2087</option><option>2096</option><option>8443</option>
+        </select></div>
+      <div style="flex:0 0 auto;display:flex;align-items:flex-end;gap:8px">
+        <button class="sec" onclick="downloadPlan()">دانلود لیست</button>
+      </div>
+    </div>
+    <p class="muted" style="margin:0">
+      بعد از اسکن، آی‌پی‌های سالم را در کادر اپراتور مربوطه بالا بچسبانید.
+    </p>
+  </div>
+
+  <div class="card">
     <h2>Change password</h2>
     <div class="row">
       <div><label for="pw">New password (at least 10 characters)</label>
@@ -371,6 +395,12 @@ function collectPools() {
     if (el && el.value.trim()) out[code] = el.value;
   }
   return out;
+}
+
+function downloadPlan() {
+  const count = Number($('sp-count').value) || 512;
+  const port = Number($('sp-port').value) || 443;
+  location.href = '/admin/api/scan-plan.txt?count=' + count + '&port=' + port;
 }
 
 async function changePassword() {

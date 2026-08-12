@@ -14,6 +14,7 @@ import { readUsers, writeUsers, readSettings, writeSettings, readAdmin } from '.
 import { loginPage, setupPage, dashboardPage } from './panel.js';
 import { buildLinks, toBase64, toClash, toSingBox, chooseFormat, contentTypeFor } from './subscription.js';
 import { detectCarrier, resolvePool, pickIps, parseIpList, CARRIER_CODES, CARRIER_LABELS } from './cleanip.js';
+import { buildScanPlan, TLS_PORTS } from './cidr.js';
 
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
   status,
@@ -201,6 +202,35 @@ async function handleApi(request, env, path) {
       country: cf.country || null,
       asn: cf.asn || null,
       org: cf.asOrganization || null,
+    });
+  }
+
+  // Candidate IPs to verify with a desktop scanner. A Worker cannot test
+  // these itself: Cloudflare's SSRF sandbox blocks raw TCP to a bare IP.
+  if (path === '/admin/api/scan-plan' && request.method === 'GET') {
+    const url = new URL(request.url);
+    const count = Math.max(16, Math.min(2048, Number(url.searchParams.get('count')) || 512));
+    const port = Number(url.searchParams.get('port')) || 443;
+    const plan = await buildScanPlan({
+      count,
+      ports: [TLS_PORTS.includes(port) ? port : 443],
+    });
+    return json(plan);
+  }
+
+  // Same list as plain text, ready to feed straight into a scanner.
+  if (path === '/admin/api/scan-plan.txt' && request.method === 'GET') {
+    const url = new URL(request.url);
+    const count = Math.max(16, Math.min(2048, Number(url.searchParams.get('count')) || 512));
+    const port = Number(url.searchParams.get('port')) || 443;
+    const chosen = TLS_PORTS.includes(port) ? port : 443;
+    const plan = await buildScanPlan({ count, ports: [chosen] });
+    return new Response(plan.candidates.map((ip) => `${ip}:${chosen}`).join('\n') + '\n', {
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8',
+        'Cache-Control': 'no-store',
+        'Content-Disposition': 'attachment; filename="scan-candidates.txt"',
+      },
     });
   }
 

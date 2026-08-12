@@ -292,6 +292,30 @@ function dashboardPage() {
   </div>
 
   <div class="card">
+    <h2>\u062A\u0648\u0644\u06CC\u062F \u0644\u06CC\u0633\u062A \u0628\u0631\u0627\u06CC \u0627\u0633\u06A9\u0646</h2>
+    <p class="muted" style="margin:0 0 12px">
+      \u0648\u0631\u06A9\u0631 \u0646\u0645\u06CC\u200C\u062A\u0648\u0627\u0646\u062F \u062E\u0648\u062F\u0634 \u0622\u06CC\u200C\u067E\u06CC \u0627\u0633\u06A9\u0646 \u06A9\u0646\u062F (\u06A9\u0644\u0648\u062F\u0641\u0644\u0631 \u0627\u062A\u0635\u0627\u0644 TCP \u062E\u0627\u0645 \u0628\u0647 \u0622\u06CC\u200C\u067E\u06CC \u0631\u0627
+      \u0645\u0633\u062F\u0648\u062F \u0645\u06CC\u200C\u06A9\u0646\u062F). \u0648\u0644\u06CC \u0645\u06CC\u200C\u062A\u0648\u0627\u0646\u062F \u0644\u06CC\u0633\u062A \u06A9\u0627\u0646\u062F\u06CC\u062F\u0627 \u0627\u0632 \u0631\u0646\u062C\u200C\u0647\u0627\u06CC \u0631\u0633\u0645\u06CC \u06A9\u0644\u0648\u062F\u0641\u0644\u0631
+      \u0628\u0633\u0627\u0632\u062F \u062A\u0627 \u0628\u0627 \u06CC\u06A9 \u0627\u0633\u06A9\u0646\u0631 \u0631\u0648\u06CC \u06A9\u0627\u0645\u067E\u06CC\u0648\u062A\u0631 \u062E\u0648\u062F\u062A\u0627\u0646 \u062A\u0633\u062A\u0634 \u06A9\u0646\u06CC\u062F.
+    </p>
+    <div class="row">
+      <div><label for="sp-count">\u062A\u0639\u062F\u0627\u062F \u0622\u06CC\u200C\u067E\u06CC</label>
+        <input id="sp-count" type="number" min="16" max="2048" value="512"></div>
+      <div><label for="sp-port">\u067E\u0648\u0631\u062A</label>
+        <select id="sp-port">
+          <option>443</option><option>2053</option><option>2083</option>
+          <option>2087</option><option>2096</option><option>8443</option>
+        </select></div>
+      <div style="flex:0 0 auto;display:flex;align-items:flex-end;gap:8px">
+        <button class="sec" onclick="downloadPlan()">\u062F\u0627\u0646\u0644\u0648\u062F \u0644\u06CC\u0633\u062A</button>
+      </div>
+    </div>
+    <p class="muted" style="margin:0">
+      \u0628\u0639\u062F \u0627\u0632 \u0627\u0633\u06A9\u0646\u060C \u0622\u06CC\u200C\u067E\u06CC\u200C\u0647\u0627\u06CC \u0633\u0627\u0644\u0645 \u0631\u0627 \u062F\u0631 \u06A9\u0627\u062F\u0631 \u0627\u067E\u0631\u0627\u062A\u0648\u0631 \u0645\u0631\u0628\u0648\u0637\u0647 \u0628\u0627\u0644\u0627 \u0628\u0686\u0633\u0628\u0627\u0646\u06CC\u062F.
+    </p>
+  </div>
+
+  <div class="card">
     <h2>Change password</h2>
     <div class="row">
       <div><label for="pw">New password (at least 10 characters)</label>
@@ -485,6 +509,12 @@ function collectPools() {
     if (el && el.value.trim()) out[code] = el.value;
   }
   return out;
+}
+
+function downloadPlan() {
+  const count = Number($('sp-count').value) || 512;
+  const port = Number($('sp-port').value) || 443;
+  location.href = '/admin/api/scan-plan.txt?count=' + count + '&port=' + port;
 }
 
 async function changePassword() {
@@ -738,6 +768,108 @@ function pickIps(ips, limit = 8, seed = Date.now()) {
   return out;
 }
 
+// src/cidr.js
+var CLOUDFLARE_V4 = [
+  "173.245.48.0/20",
+  "103.21.244.0/22",
+  "103.22.200.0/22",
+  "103.31.4.0/22",
+  "141.101.64.0/18",
+  "108.162.192.0/18",
+  "190.93.240.0/20",
+  "188.114.96.0/20",
+  "197.234.240.0/22",
+  "198.41.128.0/17",
+  "162.158.0.0/15",
+  "104.16.0.0/13",
+  "104.24.0.0/14",
+  "172.64.0.0/13",
+  "131.0.72.0/22"
+];
+var TLS_PORTS2 = [443, 2053, 2083, 2087, 2096, 8443];
+var OFFICIAL_V4_URL = "https://www.cloudflare.com/ips-v4";
+var cache = null;
+var cachedAt = 0;
+var CACHE_MS = 24 * 60 * 60 * 1e3;
+async function fetchCloudflareRanges(fetchImpl = fetch, { refresh = false } = {}) {
+  const now = Date.now();
+  if (!refresh && cache && now - cachedAt < CACHE_MS) return cache.slice();
+  try {
+    const response = await fetchImpl(OFFICIAL_V4_URL, {
+      cf: { cacheTtl: 86400, cacheEverything: true }
+    });
+    if (response.ok) {
+      const ranges = parseCidrList(await response.text());
+      if (ranges.length) {
+        cache = ranges;
+        cachedAt = now;
+        return ranges.slice();
+      }
+    }
+  } catch {
+  }
+  cache = CLOUDFLARE_V4.slice();
+  cachedAt = now;
+  return cache.slice();
+}
+function parseCidrList(text) {
+  return String(text || "").split(/[\s,]+/).map((line) => line.trim()).filter((line) => isValidCidr(line));
+}
+function isValidCidr(value) {
+  const match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\/(\d{1,2})$/.exec(String(value));
+  if (!match) return false;
+  const bits = Number(match[5]);
+  if (bits < 0 || bits > 32) return false;
+  return match.slice(1, 5).every((octet) => Number(octet) <= 255);
+}
+function ipToInt(ip) {
+  return ip.split(".").reduce((acc, octet) => (acc << 8 >>> 0) + Number(octet), 0) >>> 0;
+}
+function intToIp(value) {
+  const n = value >>> 0;
+  return [n >>> 24 & 255, n >>> 16 & 255, n >>> 8 & 255, n & 255].join(".");
+}
+function cidrRange(cidr) {
+  const [base, bitsText] = cidr.split("/");
+  const bits = Number(bitsText);
+  const start = ipToInt(base) & (bits === 0 ? 0 : ~0 << 32 - bits >>> 0);
+  const size = bits >= 31 ? 2 ** (32 - bits) : 2 ** (32 - bits) - 2;
+  const first = bits >= 31 ? start : start + 1;
+  return [first >>> 0, first + Math.max(0, size - 1) >>> 0];
+}
+function generateCandidates(cidrs, count = 512, random = Math.random) {
+  const valid = cidrs.filter(isValidCidr);
+  if (!valid.length) return [];
+  const limit = Math.max(1, Math.min(4096, Math.floor(count)));
+  const perRange = Math.max(1, Math.ceil(limit / valid.length));
+  const seen = /* @__PURE__ */ new Set();
+  for (const cidr of valid) {
+    const [first, last] = cidrRange(cidr);
+    const span = last - first + 1;
+    if (span <= 0) continue;
+    for (let i = 0; i < perRange && seen.size < limit; i += 1) {
+      seen.add(intToIp(first + Math.floor(random() * span) >>> 0));
+    }
+    if (seen.size >= limit) break;
+  }
+  return [...seen];
+}
+async function buildScanPlan({
+  count = 512,
+  ports = [443],
+  fetchImpl = fetch,
+  refresh = false
+} = {}) {
+  const ranges = await fetchCloudflareRanges(fetchImpl, { refresh });
+  const chosen = ports.filter((port) => TLS_PORTS2.includes(Number(port)));
+  return {
+    generatedAt: Date.now(),
+    ranges: ranges.length,
+    ports: chosen.length ? chosen : [443],
+    candidates: generateCandidates(ranges, count)
+  };
+}
+
 // src/admin.js
 var json = (data, status = 200) => new Response(JSON.stringify(data), {
   status,
@@ -882,6 +1014,30 @@ async function handleApi(request, env, path) {
       country: cf.country || null,
       asn: cf.asn || null,
       org: cf.asOrganization || null
+    });
+  }
+  if (path === "/admin/api/scan-plan" && request.method === "GET") {
+    const url = new URL(request.url);
+    const count = Math.max(16, Math.min(2048, Number(url.searchParams.get("count")) || 512));
+    const port = Number(url.searchParams.get("port")) || 443;
+    const plan = await buildScanPlan({
+      count,
+      ports: [TLS_PORTS2.includes(port) ? port : 443]
+    });
+    return json(plan);
+  }
+  if (path === "/admin/api/scan-plan.txt" && request.method === "GET") {
+    const url = new URL(request.url);
+    const count = Math.max(16, Math.min(2048, Number(url.searchParams.get("count")) || 512));
+    const port = Number(url.searchParams.get("port")) || 443;
+    const chosen = TLS_PORTS2.includes(port) ? port : 443;
+    const plan = await buildScanPlan({ count, ports: [chosen] });
+    return new Response(plan.candidates.map((ip) => `${ip}:${chosen}`).join("\n") + "\n", {
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8",
+        "Cache-Control": "no-store",
+        "Content-Disposition": 'attachment; filename="scan-candidates.txt"'
+      }
     });
   }
   if (path === "/admin/api/state" && request.method === "GET") {
