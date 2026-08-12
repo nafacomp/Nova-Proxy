@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "setup": "node scripts/setup.mjs",
     "check": "node --check worker.js && wrangler deploy --dry-run --outdir .wrangler/dry-run",
     "verify": "node scripts/verify-release.mjs",
     "deploy": "wrangler deploy",

@@ -15,3 +15,6 @@ node_modules/
 # Local readability aids for auditing worker.js. Generated, never deployed.
 # Regenerate with: npm run readable
 analysis/
+
+# Backup written by `npm run setup`
+wrangler.jsonc.bak
