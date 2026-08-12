@@ -7,6 +7,7 @@ import { connect } from "cloudflare:sockets";
 var USERS_KEY = "users.json";
 var SETTINGS_KEY = "settings.json";
 var ADMIN_KEY = "admin.json";
+var ADMIN_READY_KEY = "admin-ready.json";
 var userCache = null;
 var userCacheAt = 0;
 var USER_CACHE_MS = 1e4;
@@ -29,11 +30,18 @@ async function readSettings(env) {
 async function writeSettings(env, settings) {
   await env.KV.put(SETTINGS_KEY, JSON.stringify(settings));
 }
-async function readAdmin(env) {
-  return safeParse(await env.KV.get(ADMIN_KEY), null);
+async function readAdmin(env, { allowReadyKey = false } = {}) {
+  const raw = await env.KV.get(ADMIN_KEY);
+  if (raw) return safeParse(raw, null);
+  if (!allowReadyKey) return null;
+  return safeParse(await env.KV.get(ADMIN_READY_KEY), null);
 }
 async function writeAdmin(env, admin) {
-  await env.KV.put(ADMIN_KEY, JSON.stringify(admin));
+  const payload = JSON.stringify(admin);
+  await Promise.all([
+    env.KV.put(ADMIN_KEY, payload),
+    env.KV.put(ADMIN_READY_KEY, payload)
+  ]);
 }
 function safeParse(raw, fallback) {
   if (!raw) return fallback;
@@ -63,17 +71,17 @@ async function verifyPassword(password, record) {
   const candidate = await hashPassword(password, record.salt);
   return timingSafeEqual(candidate.hash, record.hash);
 }
-async function createSession(env, expiresAt = Date.now() + SESSION_MS) {
-  const admin = await readAdmin(env);
-  if (!admin) throw new Error("no admin configured");
-  return `${expiresAt}.${await sign(env, admin.hash, String(expiresAt))}`;
+async function createSession(env, expiresAt = Date.now() + SESSION_MS, admin = null) {
+  const record = admin || await readAdmin(env, { allowReadyKey: true });
+  if (!record?.hash) throw new Error("no admin configured");
+  return `${expiresAt}.${await sign(env, record.hash, String(expiresAt))}`;
 }
 async function verifySession(env, token) {
   if (!token || !token.includes(".")) return false;
   const [expiryText, signature] = token.split(".", 2);
   const expiresAt = Number(expiryText);
   if (!Number.isFinite(expiresAt) || Date.now() > expiresAt) return false;
-  const admin = await readAdmin(env);
+  const admin = await readAdmin(env, { allowReadyKey: true });
   if (!admin) return false;
   return timingSafeEqual(signature, await sign(env, admin.hash, expiryText));
 }
@@ -88,8 +96,9 @@ function sessionCookie(token, maxAgeSeconds = SESSION_MS / 1e3) {
 var clearedSessionCookie = "session=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0";
 async function setAdminPassword(env, password) {
   const record = await hashPassword(password);
-  await writeAdmin(env, { ...record, updatedAt: Date.now() });
-  return record;
+  const stored = { ...record, updatedAt: Date.now() };
+  await writeAdmin(env, stored);
+  return stored;
 }
 async function sign(env, secret, message) {
   const key = await crypto.subtle.importKey(
@@ -118,7 +127,9 @@ function bytesToHex(bytes) {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 function hexToBytes(hex) {
-  return Uint8Array.from(hex.match(/../g).map((h) => parseInt(h, 16)));
+  const pairs = String(hex || "").match(/../g);
+  if (!pairs) return new Uint8Array(0);
+  return Uint8Array.from(pairs.map((h) => parseInt(h, 16)));
 }
 
 // src/panel.js
@@ -181,7 +192,9 @@ function loginPage(error = "") {
   </div>
 </div></div>`);
 }
-function setupPage(error = "") {
+function setupPage(error = "", claim = "") {
+  const action = claim ? `/admin/setup?claim=${encodeURIComponent(claim)}` : "/admin/setup";
+  const hidden = claim ? `<input type="hidden" name="claim" value="${escapeHtml(claim)}">` : "";
   return layout("Setup", `
 <div class="wrap"><div class="center">
   <div class="card">
@@ -190,7 +203,8 @@ function setupPage(error = "") {
       Nobody has claimed this panel yet. Set a password now, before anyone else finds it.
     </p>
     <div class="msg ${error ? "err" : ""}">${escapeHtml(error)}</div>
-    <form method="POST" action="/admin/setup">
+    <form method="POST" action="${action}">
+      ${hidden}
       <label for="p">Password (at least 10 characters)</label>
       <input id="p" name="password" type="password" required minlength="10" autofocus autocomplete="new-password">
       <div style="margin-top:14px"><button type="submit" style="width:100%">Create</button></div>
@@ -954,24 +968,39 @@ async function handleSubscription(request, env, url, path) {
     }
   });
 }
+function hasSessionCookie(request) {
+  return /(?:^|;\s*)session=/.test(request.headers.get("Cookie") || "");
+}
 async function handleAdmin(request, env, url, path) {
-  const admin = await readAdmin(env);
+  let admin = await readAdmin(env);
+  if (!admin && hasSessionCookie(request)) {
+    admin = await readAdmin(env, { allowReadyKey: true });
+  }
   if (!admin) {
+    const expected = String(env.CLAIM_TOKEN || "");
+    let provided = url.searchParams.get("claim") || "";
     if (path === "/admin/setup" && request.method === "POST") {
-      const claim = String(env.CLAIM_TOKEN || "");
-      if (claim && !timingSafeEqual(url.searchParams.get("claim") || "", claim)) {
+      const form = await request.formData();
+      if (!provided) provided = String(form.get("claim") || "");
+      if (expected && !timingSafeEqual(provided, expected)) {
         return html(setupPage("Add ?claim=<your CLAIM_TOKEN> to this URL."), 403);
       }
-      const form = await request.formData();
       const password = String(form.get("password") || "");
-      if (password.length < 10) return html(setupPage("Use at least 10 characters."), 400);
-      await setAdminPassword(env, password);
+      if (password.length < 10) return html(setupPage("Use at least 10 characters.", provided), 400);
+      const record = await setAdminPassword(env, password);
       return new Response(null, {
         status: 303,
-        headers: { Location: "/admin", "Set-Cookie": sessionCookie(await createSession(env)) }
+        headers: {
+          Location: "/admin",
+          // Pass the record we just wrote — do not re-read KV.
+          "Set-Cookie": sessionCookie(await createSession(env, void 0, record))
+        }
       });
     }
-    return html(setupPage());
+    if (expected && !timingSafeEqual(provided, expected)) {
+      return html(setupPage("Add ?claim=<your CLAIM_TOKEN> to this URL."), 403);
+    }
+    return html(setupPage("", provided));
   }
   if (path === "/admin/login" && request.method === "POST") {
     if (throttled(request)) return html(loginPage("Too many attempts. Wait a few minutes."), 429);
@@ -983,7 +1012,7 @@ async function handleAdmin(request, env, url, path) {
     clearFailures(request);
     return new Response(null, {
       status: 303,
-      headers: { Location: "/admin", "Set-Cookie": sessionCookie(await createSession(env)) }
+      headers: { Location: "/admin", "Set-Cookie": sessionCookie(await createSession(env, void 0, admin)) }
     });
   }
   if (path === "/admin/logout" && request.method === "POST") {
@@ -1123,6 +1152,23 @@ var worker_default = {
       });
     } catch (error) {
       console.error("fetch failed:", error?.message || error);
+      let path = "";
+      try {
+        path = new URL(request.url).pathname.toLowerCase();
+      } catch {
+      }
+      if (path === "/admin" || path.startsWith("/admin/")) {
+        return new Response(
+          `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Setup error</title>
+<style>body{margin:0;background:#0d1117;color:#e6edf3;font-family:system-ui,sans-serif;padding:24px}a{color:#2f81f7}code{background:#161b22;padding:2px 6px;border-radius:4px}</style></head>
+<body><h1>Something went wrong</h1>
+<p>The panel hit an unexpected error while saving. The password may already be stored.</p>
+<p>Open <a href="/admin">/admin</a> and try signing in. If you still see the setup page, wait a minute and refresh \u2014 Cloudflare KV can lag for a few seconds after the first write.</p>
+<p>If the password never saved, delete the <code>admin.json</code> key in KV and open <code>/admin/setup?claim=\u2026</code> again.</p>
+</body></html>`,
+          { status: 500, headers: { "Content-Type": "text/html;charset=utf-8", "Cache-Control": "no-store" } }
+        );
+      }
       return new Response("Bad request", { status: 400 });
     }
   }

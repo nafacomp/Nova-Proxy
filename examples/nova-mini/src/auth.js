@@ -33,10 +33,12 @@ export async function verifyPassword(password, record) {
  * Session cookies are `expiry.signature`, signed with HMAC over the admin
  * hash. Changing the password therefore invalidates every existing session.
  */
-export async function createSession(env, expiresAt = Date.now() + SESSION_MS) {
-  const admin = await readAdmin(env);
-  if (!admin) throw new Error('no admin configured');
-  return `${expiresAt}.${await sign(env, admin.hash, String(expiresAt))}`;
+export async function createSession(env, expiresAt = Date.now() + SESSION_MS, admin = null) {
+  // Prefer the record we just wrote. Re-reading admin.json right after the
+  // first PUT can return null because KV negatively-caches the earlier miss.
+  const record = admin || await readAdmin(env, { allowReadyKey: true });
+  if (!record?.hash) throw new Error('no admin configured');
+  return `${expiresAt}.${await sign(env, record.hash, String(expiresAt))}`;
 }
 
 export async function verifySession(env, token) {
@@ -45,7 +47,7 @@ export async function verifySession(env, token) {
   const expiresAt = Number(expiryText);
   if (!Number.isFinite(expiresAt) || Date.now() > expiresAt) return false;
 
-  const admin = await readAdmin(env);
+  const admin = await readAdmin(env, { allowReadyKey: true });
   if (!admin) return false;
   return timingSafeEqual(signature, await sign(env, admin.hash, expiryText));
 }
@@ -65,8 +67,9 @@ export const clearedSessionCookie = 'session=; Path=/; HttpOnly; Secure; SameSit
 
 export async function setAdminPassword(env, password) {
   const record = await hashPassword(password);
-  await writeAdmin(env, { ...record, updatedAt: Date.now() });
-  return record;
+  const stored = { ...record, updatedAt: Date.now() };
+  await writeAdmin(env, stored);
+  return stored;
 }
 
 async function sign(env, secret, message) {
@@ -98,5 +101,7 @@ function bytesToHex(bytes) {
 }
 
 function hexToBytes(hex) {
-  return Uint8Array.from(hex.match(/../g).map((h) => parseInt(h, 16)));
+  const pairs = String(hex || '').match(/../g);
+  if (!pairs) return new Uint8Array(0);
+  return Uint8Array.from(pairs.map((h) => parseInt(h, 16)));
 }

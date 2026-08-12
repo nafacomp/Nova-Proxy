@@ -128,28 +128,49 @@ async function handleSubscription(request, env, url, path) {
   });
 }
 
+function hasSessionCookie(request) {
+  return /(?:^|;\s*)session=/.test(request.headers.get('Cookie') || '');
+}
+
 async function handleAdmin(request, env, url, path) {
-  const admin = await readAdmin(env);
+  // After first-run, admin.json may still look missing for ~60s because KV
+  // cached the earlier miss. The setup cookie is only issued after a write,
+  // so only then do we consult the never-negatively-cached ready key.
+  let admin = await readAdmin(env);
+  if (!admin && hasSessionCookie(request)) {
+    admin = await readAdmin(env, { allowReadyKey: true });
+  }
 
   // First run: let the operator claim the panel. A CLAIM_TOKEN, when set,
   // stops a stranger who finds the URL first from claiming it.
   if (!admin) {
+    const expected = String(env.CLAIM_TOKEN || '');
+    let provided = url.searchParams.get('claim') || '';
+
     if (path === '/admin/setup' && request.method === 'POST') {
-      const claim = String(env.CLAIM_TOKEN || '');
-      if (claim && !timingSafeEqual(url.searchParams.get('claim') || '', claim)) {
+      const form = await request.formData();
+      if (!provided) provided = String(form.get('claim') || '');
+      if (expected && !timingSafeEqual(provided, expected)) {
         return html(setupPage('Add ?claim=<your CLAIM_TOKEN> to this URL.'), 403);
       }
-      const form = await request.formData();
       const password = String(form.get('password') || '');
-      if (password.length < 10) return html(setupPage('Use at least 10 characters.'), 400);
+      if (password.length < 10) return html(setupPage('Use at least 10 characters.', provided), 400);
 
-      await setAdminPassword(env, password);
+      const record = await setAdminPassword(env, password);
       return new Response(null, {
         status: 303,
-        headers: { Location: '/admin', 'Set-Cookie': sessionCookie(await createSession(env)) },
+        headers: {
+          Location: '/admin',
+          // Pass the record we just wrote — do not re-read KV.
+          'Set-Cookie': sessionCookie(await createSession(env, undefined, record)),
+        },
       });
     }
-    return html(setupPage());
+
+    if (expected && !timingSafeEqual(provided, expected)) {
+      return html(setupPage('Add ?claim=<your CLAIM_TOKEN> to this URL.'), 403);
+    }
+    return html(setupPage('', provided));
   }
 
   if (path === '/admin/login' && request.method === 'POST') {
@@ -163,7 +184,7 @@ async function handleAdmin(request, env, url, path) {
     clearFailures(request);
     return new Response(null, {
       status: 303,
-      headers: { Location: '/admin', 'Set-Cookie': sessionCookie(await createSession(env)) },
+      headers: { Location: '/admin', 'Set-Cookie': sessionCookie(await createSession(env, undefined, admin)) },
     });
   }
 

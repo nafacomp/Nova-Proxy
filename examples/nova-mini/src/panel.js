@@ -68,7 +68,15 @@ export function loginPage(error = '') {
 </div></div>`);
 }
 
-export function setupPage(error = '') {
+export function setupPage(error = '', claim = '') {
+  // Keep ?claim= on the POST. A bare action="/admin/setup" drops it, and
+  // then a configured CLAIM_TOKEN rejects the submit as a 403.
+  const action = claim
+    ? `/admin/setup?claim=${encodeURIComponent(claim)}`
+    : '/admin/setup';
+  const hidden = claim
+    ? `<input type="hidden" name="claim" value="${escapeHtml(claim)}">`
+    : '';
   return layout('Setup', `
 <div class="wrap"><div class="center">
   <div class="card">
@@ -77,7 +85,8 @@ export function setupPage(error = '') {
       Nobody has claimed this panel yet. Set a password now, before anyone else finds it.
     </p>
     <div class="msg ${error ? 'err' : ''}">${escapeHtml(error)}</div>
-    <form method="POST" action="/admin/setup">
+    <form method="POST" action="${action}">
+      ${hidden}
       <label for="p">Password (at least 10 characters)</label>
       <input id="p" name="password" type="password" required minlength="10" autofocus autocomplete="new-password">
       <div style="margin-top:14px"><button type="submit" style="width:100%">Create</button></div>
