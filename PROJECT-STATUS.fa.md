@@ -170,12 +170,13 @@ npm run readable      # analysis/worker.readable.js
 | `ERROR-1101.fa.md` | تحلیل خطای ۱۱۰۱ |
 | `DEPLOY.fa.md` | جزئیات نصب |
 | `PROJECT-STATUS.fa.md` | همین فایل |
-| `examples/nova-mini/README.fa.md` | راهنمای nova-mini |
+| `examples/nova-mini/START-HERE.fa.md` | **راهنمای صفر تا صد nova-mini** |
+| `examples/nova-mini/README.fa.md` | مرجع فنی nova-mini |
 | `SECURITY.md` | یادداشت دربارهٔ مینیفای‌بودن + روش بررسی |
 
 | دستور | کار |
 |---|---|
-| `npm run setup` | ساخت خودکار D1 و KV + پر کردن شناسه‌ها |
+| `npm run setup` | ساخت خودکار D1 و KV + پر کردن شناسه‌ها (هر دو پروژه) |
 | `npm run check` | اعتبارسنجی بدون دیپلوی |
 | `npm run deploy` | دیپلوی |
 | `npm run readable` | ساخت نسخهٔ خوانا + اثبات یکسانی |
