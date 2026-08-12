@@ -9,6 +9,10 @@
 const USERS_KEY = 'users.json';
 const SETTINGS_KEY = 'settings.json';
 const ADMIN_KEY = 'admin.json';
+// Written together with ADMIN_KEY. First-run GET never reads this key, so
+// Cloudflare's ~60s negative cache on a missing admin.json cannot hide a
+// password that was just created (the setup POST then 303 to /admin).
+const ADMIN_READY_KEY = 'admin-ready.json';
 
 /** Reads are hot on the tunnel path, so cache briefly inside the isolate. */
 let userCache = null;
@@ -38,12 +42,19 @@ export async function writeSettings(env, settings) {
   await env.KV.put(SETTINGS_KEY, JSON.stringify(settings));
 }
 
-export async function readAdmin(env) {
-  return safeParse(await env.KV.get(ADMIN_KEY), null);
+export async function readAdmin(env, { allowReadyKey = false } = {}) {
+  const raw = await env.KV.get(ADMIN_KEY);
+  if (raw) return safeParse(raw, null);
+  if (!allowReadyKey) return null;
+  return safeParse(await env.KV.get(ADMIN_READY_KEY), null);
 }
 
 export async function writeAdmin(env, admin) {
-  await env.KV.put(ADMIN_KEY, JSON.stringify(admin));
+  const payload = JSON.stringify(admin);
+  await Promise.all([
+    env.KV.put(ADMIN_KEY, payload),
+    env.KV.put(ADMIN_READY_KEY, payload),
+  ]);
 }
 
 function safeParse(raw, fallback) {

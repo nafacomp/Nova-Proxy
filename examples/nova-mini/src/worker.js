@@ -45,6 +45,20 @@ export default {
     } catch (error) {
       // Never leak a stack trace to a prober.
       console.error('fetch failed:', error?.message || error);
+      let path = '';
+      try { path = new URL(request.url).pathname.toLowerCase(); } catch { /* ignore */ }
+      if (path === '/admin' || path.startsWith('/admin/')) {
+        return new Response(
+          `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Setup error</title>
+<style>body{margin:0;background:#0d1117;color:#e6edf3;font-family:system-ui,sans-serif;padding:24px}a{color:#2f81f7}code{background:#161b22;padding:2px 6px;border-radius:4px}</style></head>
+<body><h1>Something went wrong</h1>
+<p>The panel hit an unexpected error while saving. The password may already be stored.</p>
+<p>Open <a href="/admin">/admin</a> and try signing in. If you still see the setup page, wait a minute and refresh — Cloudflare KV can lag for a few seconds after the first write.</p>
+<p>If the password never saved, delete the <code>admin.json</code> key in KV and open <code>/admin/setup?claim=…</code> again.</p>
+</body></html>`,
+          { status: 500, headers: { 'Content-Type': 'text/html;charset=utf-8', 'Cache-Control': 'no-store' } },
+        );
+      }
       return new Response('Bad request', { status: 400 });
     }
   },
