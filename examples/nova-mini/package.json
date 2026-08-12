@@ -4,11 +4,13 @@
   "type": "module",
   "scripts": {
     "setup": "node scripts/setup.mjs",
-    "check": "node --check src/worker.js && npm test && wrangler deploy --dry-run --outdir .wrangler/dry-run",
+    "check": "node --check src/worker.js && npm test && node scripts/verify-bundle.mjs && wrangler deploy --dry-run --outdir .wrangler/dry-run",
     "deploy": "wrangler deploy",
-    "test": "node --test \"test/*.test.mjs\""
+    "test": "node --test \"test/*.test.mjs\"",
+    "bundle": "esbuild src/worker.js --bundle --format=esm --target=es2022 --external:cloudflare:sockets --outfile=dist/worker.single.js --banner:js=\"/* nova-mini single-file build for the Cloudflare dashboard editor. Regenerate with: npm run bundle */\""
   },
   "devDependencies": {
+    "esbuild": "^0.28.2",
     "wrangler": "^4.116.0"
   }
 }

@@ -5,3 +5,6 @@ node_modules/
 
 # Backup written by `npm run setup`
 wrangler.jsonc.bak
+
+# dist/worker.single.js عمداً کامیت می‌شود تا بشود مستقیم در
+# داشبورد کلودفلر کپی/پیست کرد. با «npm run bundle» بازتولید می‌شود.
