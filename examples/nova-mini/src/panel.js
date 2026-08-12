@@ -131,6 +131,55 @@ export function dashboardPage() {
   </div>
 
   <div class="card">
+    <h2>آی‌پی تمیز (Clean IP)</h2>
+    <p class="muted" style="margin:0 0 12px">
+      برای هر اپراتور یک لیست آی‌پی بگذارید. پنل خودش تشخیص می‌دهد کاربر روی
+      کدام اپراتور است و همان لیست را در کانفیگ می‌گذارد.
+      هر خط یک <code>آی‌پی</code> یا <code>آی‌پی:پورت</code>.
+    </p>
+
+    <div id="whoami" class="muted" style="margin-bottom:12px">در حال تشخیص اپراتور شما…</div>
+
+    <div class="field-row" style="margin-bottom:12px">
+      <label style="display:flex;align-items:center;gap:8px;color:var(--tx)">
+        <input type="checkbox" id="ci-on" style="width:auto" checked>
+        فعال باشد
+      </label>
+      <div style="max-width:170px;margin-inline-start:auto">
+        <label for="ci-count">چند آی‌پی در هر کانفیگ</label>
+        <input id="ci-count" type="number" min="1" max="32" value="8">
+      </div>
+    </div>
+
+    <div class="row">
+      <div><label for="ip-mci">همراه اول (MCI)</label>
+        <input id="ip-mci" placeholder="1.2.3.4، 5.6.7.8:2053"></div>
+      <div><label for="ip-mtn">ایرانسل (MTN)</label>
+        <input id="ip-mtn" placeholder="1.2.3.4، 5.6.7.8"></div>
+    </div>
+    <div class="row">
+      <div><label for="ip-rightel">رایتل</label><input id="ip-rightel"></div>
+      <div><label for="ip-shatel">شاتل</label><input id="ip-shatel"></div>
+    </div>
+    <div class="row">
+      <div><label for="ip-ir">سایر اپراتورهای ایران</label><input id="ip-ir"></div>
+      <div><label for="ip-all">پیش‌فرض / خارج از ایران</label><input id="ip-all"></div>
+    </div>
+
+    <div class="fg">
+      <label for="ci-api">یا آدرس لیست خودتان (اختیاری)</label>
+      <input id="ci-api" placeholder="https://example.com/clean-ip">
+      <div class="muted" style="margin-top:6px">
+        پوشه‌ای که فایل‌های <code>mci.txt</code>، <code>mtn.txt</code>،
+        <code>rightel.txt</code>، <code>shatel.txt</code>، <code>ir.txt</code> و
+        <code>all.txt</code> دارد. لیست دستی بالا اولویت دارد.
+      </div>
+    </div>
+
+    <button onclick="saveCleanIps()">ذخیرهٔ آی‌پی‌ها</button>
+  </div>
+
+  <div class="card">
     <h2>Change password</h2>
     <div class="row">
       <div><label for="pw">New password (at least 10 characters)</label>
@@ -160,14 +209,63 @@ async function api(path, options) {
   return data;
 }
 
+const CARRIERS = ['mci', 'mtn', 'rightel', 'shatel', 'ir', 'all'];
+
 async function load() {
   try {
     const data = await api('/admin/api/state');
     if (!data) return;
     renderUsers(data.users);
-    $('hosts').value = (data.settings.hosts || []).join(', ');
-    $('port').value = data.settings.port || 443;
-    $('subname').value = data.settings.subName || '';
+    const s = data.settings || {};
+    $('hosts').value = (s.hosts || []).join(', ');
+    $('port').value = s.port || 443;
+    $('subname').value = s.subName || '';
+
+    const pools = s.cleanIps || {};
+    for (const code of CARRIERS) {
+      const el = $('ip-' + code);
+      if (el) el.value = (pools[code] || '').split('\n').filter(Boolean).join(', ');
+    }
+    $('ci-api').value = s.poolApi || '';
+    $('ci-on').checked = s.cleanIpEnabled !== false;
+    $('ci-count').value = s.cleanIpCount || 8;
+  } catch (err) { flash(err.message, false); }
+  loadWhoami();
+}
+
+async function loadWhoami() {
+  const box = $('whoami');
+  try {
+    const info = await api('/admin/api/whoami');
+    if (!info) return;
+    box.textContent = 'شما الان روی: ' + info.label
+      + (info.org ? ' — ' + info.org : '')
+      + (info.asn ? ' (AS' + info.asn + ')' : '');
+  } catch { box.textContent = ''; }
+}
+
+async function saveCleanIps() {
+  const cleanIps = {};
+  for (const code of CARRIERS) {
+    const el = $('ip-' + code);
+    if (el && el.value.trim()) cleanIps[code] = el.value;
+  }
+  try {
+    await api('/admin/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        hosts: $('hosts').value.split(/[\n,]+/).map((h) => h.trim()).filter(Boolean),
+        port: Number($('port').value),
+        subName: $('subname').value.trim(),
+        cleanIps,
+        poolApi: $('ci-api').value.trim(),
+        cleanIpEnabled: $('ci-on').checked,
+        cleanIpCount: Number($('ci-count').value) || 8,
+      }),
+    });
+    flash('آی‌پی‌های تمیز ذخیره شد');
+    load();
   } catch (err) { flash(err.message, false); }
 }
 
@@ -252,10 +350,27 @@ async function saveSettings() {
     await api('/admin/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ hosts, port: Number($('port').value), subName: $('subname').value.trim() }),
+      body: JSON.stringify({
+        hosts,
+        port: Number($('port').value),
+        subName: $('subname').value.trim(),
+        cleanIps: collectPools(),
+        poolApi: $('ci-api').value.trim(),
+        cleanIpEnabled: $('ci-on').checked,
+        cleanIpCount: Number($('ci-count').value) || 8,
+      }),
     });
     flash('Settings saved');
   } catch (err) { flash(err.message, false); }
+}
+
+function collectPools() {
+  const out = {};
+  for (const code of CARRIERS) {
+    const el = $('ip-' + code);
+    if (el && el.value.trim()) out[code] = el.value;
+  }
+  return out;
 }
 
 async function changePassword() {

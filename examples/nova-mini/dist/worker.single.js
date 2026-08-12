@@ -243,6 +243,55 @@ function dashboardPage() {
   </div>
 
   <div class="card">
+    <h2>\u0622\u06CC\u200C\u067E\u06CC \u062A\u0645\u06CC\u0632 (Clean IP)</h2>
+    <p class="muted" style="margin:0 0 12px">
+      \u0628\u0631\u0627\u06CC \u0647\u0631 \u0627\u067E\u0631\u0627\u062A\u0648\u0631 \u06CC\u06A9 \u0644\u06CC\u0633\u062A \u0622\u06CC\u200C\u067E\u06CC \u0628\u06AF\u0630\u0627\u0631\u06CC\u062F. \u067E\u0646\u0644 \u062E\u0648\u062F\u0634 \u062A\u0634\u062E\u06CC\u0635 \u0645\u06CC\u200C\u062F\u0647\u062F \u06A9\u0627\u0631\u0628\u0631 \u0631\u0648\u06CC
+      \u06A9\u062F\u0627\u0645 \u0627\u067E\u0631\u0627\u062A\u0648\u0631 \u0627\u0633\u062A \u0648 \u0647\u0645\u0627\u0646 \u0644\u06CC\u0633\u062A \u0631\u0627 \u062F\u0631 \u06A9\u0627\u0646\u0641\u06CC\u06AF \u0645\u06CC\u200C\u06AF\u0630\u0627\u0631\u062F.
+      \u0647\u0631 \u062E\u0637 \u06CC\u06A9 <code>\u0622\u06CC\u200C\u067E\u06CC</code> \u06CC\u0627 <code>\u0622\u06CC\u200C\u067E\u06CC:\u067E\u0648\u0631\u062A</code>.
+    </p>
+
+    <div id="whoami" class="muted" style="margin-bottom:12px">\u062F\u0631 \u062D\u0627\u0644 \u062A\u0634\u062E\u06CC\u0635 \u0627\u067E\u0631\u0627\u062A\u0648\u0631 \u0634\u0645\u0627\u2026</div>
+
+    <div class="field-row" style="margin-bottom:12px">
+      <label style="display:flex;align-items:center;gap:8px;color:var(--tx)">
+        <input type="checkbox" id="ci-on" style="width:auto" checked>
+        \u0641\u0639\u0627\u0644 \u0628\u0627\u0634\u062F
+      </label>
+      <div style="max-width:170px;margin-inline-start:auto">
+        <label for="ci-count">\u0686\u0646\u062F \u0622\u06CC\u200C\u067E\u06CC \u062F\u0631 \u0647\u0631 \u06A9\u0627\u0646\u0641\u06CC\u06AF</label>
+        <input id="ci-count" type="number" min="1" max="32" value="8">
+      </div>
+    </div>
+
+    <div class="row">
+      <div><label for="ip-mci">\u0647\u0645\u0631\u0627\u0647 \u0627\u0648\u0644 (MCI)</label>
+        <input id="ip-mci" placeholder="1.2.3.4\u060C 5.6.7.8:2053"></div>
+      <div><label for="ip-mtn">\u0627\u06CC\u0631\u0627\u0646\u0633\u0644 (MTN)</label>
+        <input id="ip-mtn" placeholder="1.2.3.4\u060C 5.6.7.8"></div>
+    </div>
+    <div class="row">
+      <div><label for="ip-rightel">\u0631\u0627\u06CC\u062A\u0644</label><input id="ip-rightel"></div>
+      <div><label for="ip-shatel">\u0634\u0627\u062A\u0644</label><input id="ip-shatel"></div>
+    </div>
+    <div class="row">
+      <div><label for="ip-ir">\u0633\u0627\u06CC\u0631 \u0627\u067E\u0631\u0627\u062A\u0648\u0631\u0647\u0627\u06CC \u0627\u06CC\u0631\u0627\u0646</label><input id="ip-ir"></div>
+      <div><label for="ip-all">\u067E\u06CC\u0634\u200C\u0641\u0631\u0636 / \u062E\u0627\u0631\u062C \u0627\u0632 \u0627\u06CC\u0631\u0627\u0646</label><input id="ip-all"></div>
+    </div>
+
+    <div class="fg">
+      <label for="ci-api">\u06CC\u0627 \u0622\u062F\u0631\u0633 \u0644\u06CC\u0633\u062A \u062E\u0648\u062F\u062A\u0627\u0646 (\u0627\u062E\u062A\u06CC\u0627\u0631\u06CC)</label>
+      <input id="ci-api" placeholder="https://example.com/clean-ip">
+      <div class="muted" style="margin-top:6px">
+        \u067E\u0648\u0634\u0647\u200C\u0627\u06CC \u06A9\u0647 \u0641\u0627\u06CC\u0644\u200C\u0647\u0627\u06CC <code>mci.txt</code>\u060C <code>mtn.txt</code>\u060C
+        <code>rightel.txt</code>\u060C <code>shatel.txt</code>\u060C <code>ir.txt</code> \u0648
+        <code>all.txt</code> \u062F\u0627\u0631\u062F. \u0644\u06CC\u0633\u062A \u062F\u0633\u062A\u06CC \u0628\u0627\u0644\u0627 \u0627\u0648\u0644\u0648\u06CC\u062A \u062F\u0627\u0631\u062F.
+      </div>
+    </div>
+
+    <button onclick="saveCleanIps()">\u0630\u062E\u06CC\u0631\u0647\u0654 \u0622\u06CC\u200C\u067E\u06CC\u200C\u0647\u0627</button>
+  </div>
+
+  <div class="card">
     <h2>Change password</h2>
     <div class="row">
       <div><label for="pw">New password (at least 10 characters)</label>
@@ -272,14 +321,65 @@ async function api(path, options) {
   return data;
 }
 
+const CARRIERS = ['mci', 'mtn', 'rightel', 'shatel', 'ir', 'all'];
+
 async function load() {
   try {
     const data = await api('/admin/api/state');
     if (!data) return;
     renderUsers(data.users);
-    $('hosts').value = (data.settings.hosts || []).join(', ');
-    $('port').value = data.settings.port || 443;
-    $('subname').value = data.settings.subName || '';
+    const s = data.settings || {};
+    $('hosts').value = (s.hosts || []).join(', ');
+    $('port').value = s.port || 443;
+    $('subname').value = s.subName || '';
+
+    const pools = s.cleanIps || {};
+    for (const code of CARRIERS) {
+      const el = $('ip-' + code);
+      if (el) el.value = (pools[code] || '').split('
+').filter(Boolean).join(', ');
+    }
+    $('ci-api').value = s.poolApi || '';
+    $('ci-on').checked = s.cleanIpEnabled !== false;
+    $('ci-count').value = s.cleanIpCount || 8;
+  } catch (err) { flash(err.message, false); }
+  loadWhoami();
+}
+
+async function loadWhoami() {
+  const box = $('whoami');
+  try {
+    const info = await api('/admin/api/whoami');
+    if (!info) return;
+    box.textContent = '\u0634\u0645\u0627 \u0627\u0644\u0627\u0646 \u0631\u0648\u06CC: ' + info.label
+      + (info.org ? ' \u2014 ' + info.org : '')
+      + (info.asn ? ' (AS' + info.asn + ')' : '');
+  } catch { box.textContent = ''; }
+}
+
+async function saveCleanIps() {
+  const cleanIps = {};
+  for (const code of CARRIERS) {
+    const el = $('ip-' + code);
+    if (el && el.value.trim()) cleanIps[code] = el.value;
+  }
+  try {
+    await api('/admin/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        hosts: $('hosts').value.split(/[
+,]+/).map((h) => h.trim()).filter(Boolean),
+        port: Number($('port').value),
+        subName: $('subname').value.trim(),
+        cleanIps,
+        poolApi: $('ci-api').value.trim(),
+        cleanIpEnabled: $('ci-on').checked,
+        cleanIpCount: Number($('ci-count').value) || 8,
+      }),
+    });
+    flash('\u0622\u06CC\u200C\u067E\u06CC\u200C\u0647\u0627\u06CC \u062A\u0645\u06CC\u0632 \u0630\u062E\u06CC\u0631\u0647 \u0634\u062F');
+    load();
   } catch (err) { flash(err.message, false); }
 }
 
@@ -364,10 +464,27 @@ async function saveSettings() {
     await api('/admin/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ hosts, port: Number($('port').value), subName: $('subname').value.trim() }),
+      body: JSON.stringify({
+        hosts,
+        port: Number($('port').value),
+        subName: $('subname').value.trim(),
+        cleanIps: collectPools(),
+        poolApi: $('ci-api').value.trim(),
+        cleanIpEnabled: $('ci-on').checked,
+        cleanIpCount: Number($('ci-count').value) || 8,
+      }),
     });
     flash('Settings saved');
   } catch (err) { flash(err.message, false); }
+}
+
+function collectPools() {
+  const out = {};
+  for (const code of CARRIERS) {
+    const el = $('ip-' + code);
+    if (el && el.value.trim()) out[code] = el.value;
+  }
+  return out;
 }
 
 async function changePassword() {
@@ -393,10 +510,26 @@ function escapeHtml(value) {
 
 // src/subscription.js
 var TLS_PORTS = [443, 2053, 2083, 2087, 2096, 8443];
-function buildLinks(user, settings, host) {
+function buildLinks(user, settings, host, cleanIps = []) {
   const hosts = (settings.hosts?.length ? settings.hosts : [host]).filter(Boolean);
   const port = TLS_PORTS.includes(Number(settings.port)) ? Number(settings.port) : 443;
   const name = settings.subName || "nova-mini";
+  const primary = hosts[0] || host;
+  if (cleanIps.length) {
+    return cleanIps.map((entry, index) => {
+      const [ip, ipPort] = splitEntry(entry, port);
+      const params = new URLSearchParams({
+        security: "tls",
+        sni: primary,
+        fp: "chrome",
+        type: "ws",
+        host: primary,
+        path: "/",
+        encryption: "none"
+      });
+      return `vless://${user.uuid}@${ip}:${ipPort}?${params}#${encodeURIComponent(`${name}-ip${index + 1}`)}`;
+    });
+  }
   return hosts.map((entry, index) => {
     const params = new URLSearchParams({
       security: "tls",
@@ -411,31 +544,46 @@ function buildLinks(user, settings, host) {
     return `vless://${user.uuid}@${entry}:${port}?${params}#${encodeURIComponent(label)}`;
   });
 }
+function splitEntry(entry, fallbackPort) {
+  const index = String(entry).lastIndexOf(":");
+  if (index === -1) return [entry, fallbackPort];
+  const port = Number(entry.slice(index + 1));
+  return [entry.slice(0, index), port > 0 && port <= 65535 ? port : fallbackPort];
+}
 function toBase64(links) {
   return btoa(unescape(encodeURIComponent(links.join("\n"))));
 }
-function toClash(links, user, settings, host) {
+function toClash(links, user, settings, host, cleanIps = []) {
   const hosts = (settings.hosts?.length ? settings.hosts : [host]).filter(Boolean);
   const port = TLS_PORTS.includes(Number(settings.port)) ? Number(settings.port) : 443;
+  const primary = hosts[0] || host;
   const names = [];
-  const proxies = hosts.map((entry, index) => {
-    const name = hosts.length > 1 ? `nova-${index + 1}` : "nova";
+  const entries = cleanIps.length ? cleanIps.map((ip, i) => {
+    const [addr, addrPort] = splitEntry(ip, port);
+    return { name: `nova-ip${i + 1}`, server: addr, port: addrPort, sni: primary };
+  }) : hosts.map((h, i) => ({
+    name: hosts.length > 1 ? `nova-${i + 1}` : "nova",
+    server: h,
+    port,
+    sni: h
+  }));
+  const proxies = entries.map(({ name, server, port: p, sni }) => {
     names.push(name);
     return [
       `  - name: "${name}"`,
       "    type: vless",
-      `    server: ${entry}`,
-      `    port: ${port}`,
+      `    server: ${server}`,
+      `    port: ${p}`,
       `    uuid: ${user.uuid}`,
       "    network: ws",
       "    tls: true",
       "    udp: false",
-      `    servername: ${entry}`,
+      `    servername: ${sni}`,
       "    client-fingerprint: chrome",
       "    ws-opts:",
       '      path: "/"',
       "      headers:",
-      `        Host: ${entry}`
+      `        Host: ${sni}`
     ].join("\n");
   });
   const list = names.map((n) => `      - "${n}"`).join("\n");
@@ -455,17 +603,27 @@ function toClash(links, user, settings, host) {
     ""
   ].join("\n");
 }
-function toSingBox(links, user, settings, host) {
+function toSingBox(links, user, settings, host, cleanIps = []) {
   const hosts = (settings.hosts?.length ? settings.hosts : [host]).filter(Boolean);
   const port = TLS_PORTS.includes(Number(settings.port)) ? Number(settings.port) : 443;
-  const outbounds = hosts.map((entry, index) => ({
+  const primary = hosts[0] || host;
+  const entries = cleanIps.length ? cleanIps.map((ip, i) => {
+    const [addr, addrPort] = splitEntry(ip, port);
+    return { tag: `nova-ip${i + 1}`, server: addr, port: addrPort, sni: primary };
+  }) : hosts.map((h, i) => ({
+    tag: hosts.length > 1 ? `nova-${i + 1}` : "nova",
+    server: h,
+    port,
+    sni: h
+  }));
+  const outbounds = entries.map(({ tag, server, port: p, sni }) => ({
     type: "vless",
-    tag: hosts.length > 1 ? `nova-${index + 1}` : "nova",
-    server: entry,
-    server_port: port,
+    tag,
+    server,
+    server_port: p,
     uuid: user.uuid,
-    tls: { enabled: true, server_name: entry, utls: { enabled: true, fingerprint: "chrome" } },
-    transport: { type: "ws", path: "/", headers: { Host: entry } }
+    tls: { enabled: true, server_name: sni, utls: { enabled: true, fingerprint: "chrome" } },
+    transport: { type: "ws", path: "/", headers: { Host: sni } }
   }));
   return JSON.stringify({
     outbounds: [
@@ -489,6 +647,97 @@ function contentTypeFor(format) {
   return "text/plain;charset=utf-8";
 }
 
+// src/cleanip.js
+var CARRIERS = [
+  { code: "mtn", asn: 44244, match: /irancell|mtn/ },
+  { code: "mci", asn: 197207, match: /mobile communication company of iran|mcci|hamrah/ },
+  { code: "rightel", asn: 57218, match: /rightel/ },
+  { code: "shatel", asn: 31549, match: /shatel/ }
+];
+var CARRIER_CODES = ["mci", "mtn", "rightel", "shatel", "ir", "all"];
+var CARRIER_LABELS = {
+  mci: "\u0647\u0645\u0631\u0627\u0647 \u0627\u0648\u0644 (MCI)",
+  mtn: "\u0627\u06CC\u0631\u0627\u0646\u0633\u0644 (MTN)",
+  rightel: "\u0631\u0627\u06CC\u062A\u0644",
+  shatel: "\u0634\u0627\u062A\u0644",
+  ir: "\u0633\u0627\u06CC\u0631 \u0627\u067E\u0631\u0627\u062A\u0648\u0631\u0647\u0627\u06CC \u0627\u06CC\u0631\u0627\u0646",
+  all: "\u062E\u0627\u0631\u062C \u0627\u0632 \u0627\u06CC\u0631\u0627\u0646 / \u067E\u06CC\u0634\u200C\u0641\u0631\u0636"
+};
+function detectCarrier(request) {
+  const cf = request?.cf || {};
+  if (String(cf.country || "").toUpperCase() !== "IR") return "all";
+  const org = String(cf.asOrganization || "").toLowerCase();
+  const asn = Number(cf.asn || 0);
+  for (const carrier of CARRIERS) {
+    if (asn === carrier.asn || carrier.match.test(org)) return carrier.code;
+  }
+  return "ir";
+}
+function parseIpList(text) {
+  if (!text) return [];
+  return String(text).split(/[\n,]+/).map((line) => line.trim()).filter((line) => line && !line.startsWith("#")).map((line) => line.split("#")[0].trim()).filter((entry) => isValidEntry(entry)).slice(0, 200);
+}
+function isValidEntry(entry) {
+  const [host, port] = splitEntry2(entry);
+  if (port !== null && !(port > 0 && port <= 65535)) return false;
+  const octets = host.split(".");
+  if (octets.length !== 4) return false;
+  return octets.every((part) => /^\d{1,3}$/.test(part) && Number(part) <= 255);
+}
+function splitEntry2(entry) {
+  const index = entry.lastIndexOf(":");
+  if (index === -1) return [entry, null];
+  return [entry.slice(0, index), Number(entry.slice(index + 1))];
+}
+var remoteCache = /* @__PURE__ */ new Map();
+var REMOTE_TTL_MS = 30 * 60 * 1e3;
+async function fetchRemotePool(baseUrl, carrier, fetchImpl = fetch) {
+  const base = String(baseUrl || "").trim().replace(/\/+$/, "");
+  if (!/^https:\/\//i.test(base)) return [];
+  const candidates = [.../* @__PURE__ */ new Set([carrier, "ir", "all"])];
+  for (const name of candidates) {
+    const url = `${base}/${name}.txt`;
+    const cached = remoteCache.get(url);
+    if (cached && Date.now() - cached.at < REMOTE_TTL_MS) {
+      if (cached.ips.length) return cached.ips.slice();
+      continue;
+    }
+    try {
+      const response = await fetchImpl(url, {
+        headers: { "User-Agent": "nova-mini" },
+        cf: { cacheTtl: 1800, cacheEverything: true }
+      });
+      const ips = response.ok ? parseIpList(await response.text()) : [];
+      remoteCache.set(url, { at: Date.now(), ips });
+      if (ips.length) return ips.slice();
+    } catch {
+      remoteCache.set(url, { at: Date.now(), ips: [] });
+    }
+  }
+  return [];
+}
+async function resolvePool(settings, carrier, fetchImpl = fetch) {
+  const pools = settings?.cleanIps || {};
+  const manual = parseIpList(pools[carrier]);
+  if (manual.length) return { ips: manual, source: `manual:${carrier}` };
+  for (const fallback of ["ir", "all"]) {
+    const list = parseIpList(pools[fallback]);
+    if (list.length) return { ips: list, source: `manual:${fallback}` };
+  }
+  if (settings?.poolApi) {
+    const remote = await fetchRemotePool(settings.poolApi, carrier, fetchImpl);
+    if (remote.length) return { ips: remote, source: `remote:${carrier}` };
+  }
+  return { ips: [], source: "none" };
+}
+function pickIps(ips, limit = 8, seed = Date.now()) {
+  if (ips.length <= limit) return ips.slice();
+  const start = Math.abs(Math.floor(seed)) % ips.length;
+  const out = [];
+  for (let i = 0; i < limit; i += 1) out.push(ips[(start + i) % ips.length]);
+  return out;
+}
+
 // src/admin.js
 var json = (data, status = 200) => new Response(JSON.stringify(data), {
   status,
@@ -506,6 +755,13 @@ var html = (body, status = 200, headers = {}) => new Response(body, {
     ...headers
   }
 });
+function hashSeed(text) {
+  let hash = 0;
+  for (let i = 0; i < String(text).length; i += 1) {
+    hash = hash * 31 + String(text).charCodeAt(i) >>> 0;
+  }
+  return hash;
+}
 var attempts = /* @__PURE__ */ new Map();
 var MAX_ATTEMPTS = 6;
 var WINDOW_MS = 10 * 60 * 1e3;
@@ -545,14 +801,22 @@ async function handleSubscription(request, env, url, path) {
   const user = users.find((candidate) => timingSafeEqual(candidate.token, token));
   if (!user || user.enabled === false) return new Response("Not found", { status: 404 });
   const settings = await readSettings(env);
-  const links = buildLinks(user, settings, url.hostname);
+  const carrier = String(url.searchParams.get("carrier") || "").toLowerCase();
+  const detected = CARRIER_CODES.includes(carrier) ? carrier : detectCarrier(request);
+  let cleanIps = [];
+  if (settings.cleanIpEnabled !== false) {
+    const pool = await resolvePool(settings, detected);
+    cleanIps = pickIps(pool.ips, Number(settings.cleanIpCount) || 8, hashSeed(user.token));
+  }
+  const links = buildLinks(user, settings, url.hostname, cleanIps);
   const format = chooseFormat(url, request.headers.get("User-Agent") || "");
-  const body = format === "clash" ? toClash(links, user, settings, url.hostname) : format === "singbox" ? toSingBox(links, user, settings, url.hostname) : toBase64(links);
+  const body = format === "clash" ? toClash(links, user, settings, url.hostname, cleanIps) : format === "singbox" ? toSingBox(links, user, settings, url.hostname, cleanIps) : toBase64(links);
   return new Response(body, {
     headers: {
       "Content-Type": contentTypeFor(format),
       "Cache-Control": "no-store",
       "Profile-Update-Interval": "12",
+      "X-Nova-Carrier": detected,
       "Subscription-Userinfo": "upload=0; download=0; total=0",
       "Content-Disposition": `attachment; filename="${settings.subName || "nova-mini"}"`
     }
@@ -609,6 +873,17 @@ async function handleApi(request, env, path) {
       return json({ error: "cross-origin request rejected" }, 403);
     }
   }
+  if (path === "/admin/api/whoami" && request.method === "GET") {
+    const cf = request.cf || {};
+    const carrier = detectCarrier(request);
+    return json({
+      carrier,
+      label: CARRIER_LABELS[carrier] || carrier,
+      country: cf.country || null,
+      asn: cf.asn || null,
+      org: cf.asOrganization || null
+    });
+  }
   if (path === "/admin/api/state" && request.method === "GET") {
     const [users, settings] = await Promise.all([readUsers(env), readSettings(env)]);
     return json({ users, settings });
@@ -642,10 +917,25 @@ async function handleApi(request, env, path) {
   if (path === "/admin/api/settings" && request.method === "POST") {
     const body = await request.json().catch(() => ({}));
     const hosts = Array.isArray(body.hosts) ? body.hosts.map((h) => String(h).trim().toLowerCase().replace(/^https?:\/\//, "").split("/")[0]).filter(Boolean).slice(0, 10) : [];
+    const cleanIps = {};
+    if (body.cleanIps && typeof body.cleanIps === "object") {
+      for (const code of CARRIER_CODES) {
+        const parsed = parseIpList(body.cleanIps[code]);
+        if (parsed.length) cleanIps[code] = parsed.join("\n");
+      }
+    }
+    const poolApi = String(body.poolApi || "").trim();
+    if (poolApi && !/^https:\/\//i.test(poolApi)) {
+      return json({ error: "the pool URL must start with https://" }, 400);
+    }
     await writeSettings(env, {
       hosts,
       port: Number(body.port) || 443,
-      subName: String(body.subName || "").trim().slice(0, 40)
+      subName: String(body.subName || "").trim().slice(0, 40),
+      cleanIps,
+      poolApi,
+      cleanIpEnabled: body.cleanIpEnabled !== false,
+      cleanIpCount: Math.max(1, Math.min(32, Number(body.cleanIpCount) || 8))
     });
     return json({ ok: true });
   }

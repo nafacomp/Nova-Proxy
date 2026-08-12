@@ -8,11 +8,37 @@
 
 const TLS_PORTS = [443, 2053, 2083, 2087, 2096, 8443];
 
-/** One vless:// URI per host, labelled for the client's server list. */
-export function buildLinks(user, settings, host) {
+/**
+ * One vless:// URI per entry, labelled for the client's server list.
+ *
+ * `cleanIps` is optional. When present, each config points at a clean IP
+ * while the TLS SNI and WebSocket Host header stay on your real hostname,
+ * which is what makes the connection work: Cloudflare routes on the SNI, so
+ * any of its edge IPs will do, and the user gets one that is fast on their
+ * carrier.
+ */
+export function buildLinks(user, settings, host, cleanIps = []) {
   const hosts = (settings.hosts?.length ? settings.hosts : [host]).filter(Boolean);
   const port = TLS_PORTS.includes(Number(settings.port)) ? Number(settings.port) : 443;
   const name = settings.subName || 'nova-mini';
+  const primary = hosts[0] || host;
+
+  // Clean-IP mode: dial the IP, keep the SNI/Host on the real domain.
+  if (cleanIps.length) {
+    return cleanIps.map((entry, index) => {
+      const [ip, ipPort] = splitEntry(entry, port);
+      const params = new URLSearchParams({
+        security: 'tls',
+        sni: primary,
+        fp: 'chrome',
+        type: 'ws',
+        host: primary,
+        path: '/',
+        encryption: 'none',
+      });
+      return `vless://${user.uuid}@${ip}:${ipPort}?${params}#${encodeURIComponent(`${name}-ip${index + 1}`)}`;
+    });
+  }
 
   return hosts.map((entry, index) => {
     const params = new URLSearchParams({
@@ -29,35 +55,54 @@ export function buildLinks(user, settings, host) {
   });
 }
 
+/** "1.2.3.4" or "1.2.3.4:8443" -> [host, port] */
+function splitEntry(entry, fallbackPort) {
+  const index = String(entry).lastIndexOf(':');
+  if (index === -1) return [entry, fallbackPort];
+  const port = Number(entry.slice(index + 1));
+  return [entry.slice(0, index), port > 0 && port <= 65535 ? port : fallbackPort];
+}
+
 /** v2rayN, Hiddify, Streisand: base64 of newline-separated URIs. */
 export function toBase64(links) {
   return btoa(unescape(encodeURIComponent(links.join('\n'))));
 }
 
 /** Clash / mihomo. Hand-built YAML so there is no dependency. */
-export function toClash(links, user, settings, host) {
+export function toClash(links, user, settings, host, cleanIps = []) {
   const hosts = (settings.hosts?.length ? settings.hosts : [host]).filter(Boolean);
   const port = TLS_PORTS.includes(Number(settings.port)) ? Number(settings.port) : 443;
+  const primary = hosts[0] || host;
   const names = [];
 
-  const proxies = hosts.map((entry, index) => {
-    const name = hosts.length > 1 ? `nova-${index + 1}` : 'nova';
+  // In clean-IP mode the server is the IP but sni/Host stay on the domain.
+  const entries = cleanIps.length
+    ? cleanIps.map((ip, i) => {
+        const [addr, addrPort] = splitEntry(ip, port);
+        return { name: `nova-ip${i + 1}`, server: addr, port: addrPort, sni: primary };
+      })
+    : hosts.map((h, i) => ({
+        name: hosts.length > 1 ? `nova-${i + 1}` : 'nova',
+        server: h, port, sni: h,
+      }));
+
+  const proxies = entries.map(({ name, server, port: p, sni }) => {
     names.push(name);
     return [
       `  - name: "${name}"`,
       '    type: vless',
-      `    server: ${entry}`,
-      `    port: ${port}`,
+      `    server: ${server}`,
+      `    port: ${p}`,
       `    uuid: ${user.uuid}`,
       '    network: ws',
       '    tls: true',
       '    udp: false',
-      `    servername: ${entry}`,
+      `    servername: ${sni}`,
       '    client-fingerprint: chrome',
       '    ws-opts:',
       '      path: "/"',
       '      headers:',
-      `        Host: ${entry}`,
+      `        Host: ${sni}`,
     ].join('\n');
   });
 
@@ -80,18 +125,29 @@ export function toClash(links, user, settings, host) {
 }
 
 /** sing-box. Emitted as JSON so it is valid by construction. */
-export function toSingBox(links, user, settings, host) {
+export function toSingBox(links, user, settings, host, cleanIps = []) {
   const hosts = (settings.hosts?.length ? settings.hosts : [host]).filter(Boolean);
   const port = TLS_PORTS.includes(Number(settings.port)) ? Number(settings.port) : 443;
+  const primary = hosts[0] || host;
 
-  const outbounds = hosts.map((entry, index) => ({
+  const entries = cleanIps.length
+    ? cleanIps.map((ip, i) => {
+        const [addr, addrPort] = splitEntry(ip, port);
+        return { tag: `nova-ip${i + 1}`, server: addr, port: addrPort, sni: primary };
+      })
+    : hosts.map((h, i) => ({
+        tag: hosts.length > 1 ? `nova-${i + 1}` : 'nova',
+        server: h, port, sni: h,
+      }));
+
+  const outbounds = entries.map(({ tag, server, port: p, sni }) => ({
     type: 'vless',
-    tag: hosts.length > 1 ? `nova-${index + 1}` : 'nova',
-    server: entry,
-    server_port: port,
+    tag,
+    server,
+    server_port: p,
     uuid: user.uuid,
-    tls: { enabled: true, server_name: entry, utls: { enabled: true, fingerprint: 'chrome' } },
-    transport: { type: 'ws', path: '/', headers: { Host: entry } },
+    tls: { enabled: true, server_name: sni, utls: { enabled: true, fingerprint: 'chrome' } },
+    transport: { type: 'ws', path: '/', headers: { Host: sni } },
   }));
 
   return JSON.stringify({

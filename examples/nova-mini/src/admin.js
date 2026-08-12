@@ -13,6 +13,7 @@ import {
 import { readUsers, writeUsers, readSettings, writeSettings, readAdmin } from './store.js';
 import { loginPage, setupPage, dashboardPage } from './panel.js';
 import { buildLinks, toBase64, toClash, toSingBox, chooseFormat, contentTypeFor } from './subscription.js';
+import { detectCarrier, resolvePool, pickIps, parseIpList, CARRIER_CODES, CARRIER_LABELS } from './cleanip.js';
 
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
   status,
@@ -31,6 +32,15 @@ const html = (body, status = 200, headers = {}) => new Response(body, {
     ...headers,
   },
 });
+
+/** Stable per-user seed so a user keeps the same slice of the pool. */
+function hashSeed(text) {
+  let hash = 0;
+  for (let i = 0; i < String(text).length; i += 1) {
+    hash = (hash * 31 + String(text).charCodeAt(i)) >>> 0;
+  }
+  return hash;
+}
 
 /** Simple per-IP throttle so the login form cannot be brute forced. */
 const attempts = new Map();
@@ -86,11 +96,23 @@ async function handleSubscription(request, env, url, path) {
   if (!user || user.enabled === false) return new Response('Not found', { status: 404 });
 
   const settings = await readSettings(env);
-  const links = buildLinks(user, settings, url.hostname);
+
+  // Which carrier is this subscription being fetched from? request.cf is set
+  // by Cloudflare and cannot be spoofed by the client.
+  const carrier = String(url.searchParams.get('carrier') || '').toLowerCase();
+  const detected = CARRIER_CODES.includes(carrier) ? carrier : detectCarrier(request);
+
+  let cleanIps = [];
+  if (settings.cleanIpEnabled !== false) {
+    const pool = await resolvePool(settings, detected);
+    cleanIps = pickIps(pool.ips, Number(settings.cleanIpCount) || 8, hashSeed(user.token));
+  }
+
+  const links = buildLinks(user, settings, url.hostname, cleanIps);
   const format = chooseFormat(url, request.headers.get('User-Agent') || '');
 
-  const body = format === 'clash' ? toClash(links, user, settings, url.hostname)
-    : format === 'singbox' ? toSingBox(links, user, settings, url.hostname)
+  const body = format === 'clash' ? toClash(links, user, settings, url.hostname, cleanIps)
+    : format === 'singbox' ? toSingBox(links, user, settings, url.hostname, cleanIps)
     : toBase64(links);
 
   return new Response(body, {
@@ -98,6 +120,7 @@ async function handleSubscription(request, env, url, path) {
       'Content-Type': contentTypeFor(format),
       'Cache-Control': 'no-store',
       'Profile-Update-Interval': '12',
+      'X-Nova-Carrier': detected,
       'Subscription-Userinfo': 'upload=0; download=0; total=0',
       'Content-Disposition': `attachment; filename="${settings.subName || 'nova-mini'}"`,
     },
@@ -167,6 +190,20 @@ async function handleApi(request, env, path) {
     }
   }
 
+  // Shows the operator which carrier Cloudflare thinks they are on, which is
+  // the quickest way to check the detection is working.
+  if (path === '/admin/api/whoami' && request.method === 'GET') {
+    const cf = request.cf || {};
+    const carrier = detectCarrier(request);
+    return json({
+      carrier,
+      label: CARRIER_LABELS[carrier] || carrier,
+      country: cf.country || null,
+      asn: cf.asn || null,
+      org: cf.asOrganization || null,
+    });
+  }
+
   if (path === '/admin/api/state' && request.method === 'GET') {
     const [users, settings] = await Promise.all([readUsers(env), readSettings(env)]);
     return json({ users, settings });
@@ -208,10 +245,28 @@ async function handleApi(request, env, path) {
       ? body.hosts.map((h) => String(h).trim().toLowerCase()
           .replace(/^https?:\/\//, '').split('/')[0]).filter(Boolean).slice(0, 10)
       : [];
+    // Keep only the known carrier keys, and validate every IP on the way in
+    // so a typo cannot end up in a subscription.
+    const cleanIps = {};
+    if (body.cleanIps && typeof body.cleanIps === 'object') {
+      for (const code of CARRIER_CODES) {
+        const parsed = parseIpList(body.cleanIps[code]);
+        if (parsed.length) cleanIps[code] = parsed.join('\n');
+      }
+    }
+    const poolApi = String(body.poolApi || '').trim();
+    if (poolApi && !/^https:\/\//i.test(poolApi)) {
+      return json({ error: 'the pool URL must start with https://' }, 400);
+    }
+
     await writeSettings(env, {
       hosts,
       port: Number(body.port) || 443,
       subName: String(body.subName || '').trim().slice(0, 40),
+      cleanIps,
+      poolApi,
+      cleanIpEnabled: body.cleanIpEnabled !== false,
+      cleanIpCount: Math.max(1, Math.min(32, Number(body.cleanIpCount) || 8)),
     });
     return json({ ok: true });
   }
