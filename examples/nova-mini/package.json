@@ -1,0 +1,13 @@
+{
+  "name": "nova-mini",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --check src/worker.js && npm test && wrangler deploy --dry-run --outdir .wrangler/dry-run",
+    "deploy": "wrangler deploy",
+    "test": "node --test \"test/*.test.mjs\""
+  },
+  "devDependencies": {
+    "wrangler": "^4.116.0"
+  }
+}
