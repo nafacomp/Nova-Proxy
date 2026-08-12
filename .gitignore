@@ -11,3 +11,7 @@ node_modules/
 # Deploy to Cloudflare to decide which secrets to prompt for. Real secrets
 # still stay out via the .dev.vars rules above.
 !.dev.vars.example
+
+# Local readability aids for auditing worker.js. Generated, never deployed.
+# Regenerate with: npm run readable
+analysis/

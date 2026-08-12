@@ -6,9 +6,12 @@
   "scripts": {
     "check": "node --check worker.js && wrangler deploy --dry-run --outdir .wrangler/dry-run",
     "verify": "node scripts/verify-release.mjs",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "readable": "js-beautify --type js -f worker.js -o analysis/worker.readable.js && node scripts/verify-readable.mjs"
   },
   "devDependencies": {
+    "acorn": "^8.18.0",
+    "js-beautify": "^2.0.3",
     "wrangler": "^4.116.0"
   }
 }
