@@ -239,6 +239,13 @@ curl -s https://<your-worker>/healthz
 `Workers & Pages > ورکر > Settings > Runtime` و مطمئن شو فلگ `nodejs_compat`
 هست و `compatibility_date` حداقل `2024-09-23` است.
 
+> **نکتهٔ داشبورد:** وقتی `nodejs_compat` را در فیلد Compatibility flags تایپ
+> می‌کنی، لیست کشویی ممکن است خودش را نشان ندهد و به‌جایش اسم‌های مشابه بیاورد
+> (`add_nodejs_compat_eol`، `remove_nodejs_compat_eol_v23`،
+> `nodejs_compat_populate_process_env` و…). **هیچ‌کدام از اینها جایگزین نیستند.**
+> عین `nodejs_compat` را تایپ کن و بدون انتخاب از لیست، Save بزن. اگر داشبورد
+> اجازه نداد، از ترمینال استفاده کن — `wrangler.jsonc` این فلگ را دارد.
+
 ### نوع ب — بالا می‌آید ولی بعد از مدتی می‌ترکد
 
 مصرف CPU. این متغیرها مستقیماً روی آن اثر دارند:
@@ -361,9 +368,15 @@ vless://…@1.1.1.1:443?security=tls&sni=vpn.example.com&…&host=vpn.example.co
 |---|---|
 | بایندینگ KV | `KV` |
 | سکرت | `CLAIM_TOKEN` |
-| فلگ سازگاری | `nodejs_compat` |
-| تاریخ سازگاری | حداقل `2024-09-23` |
+| فلگ سازگاری | **فقط Nova کامل:** `nodejs_compat`<br>nova-mini فلگ نمی‌خواهد |
+| تاریخ سازگاری | فقط Nova کامل: حداقل `2024-09-23` |
 | بایندینگ D1 (فقط Nova) | `DB` |
+
+> **چرا nova-mini فلگ نمی‌خواهد؟** چون هیچ ماژول `node:` استفاده نمی‌کند —
+> فقط WebCrypto و KV و WebSocket که همه داخل خود ورکرز هستند. تست شد: بدون
+> هیچ فلگی، setup و ورود و افزودن کاربر و لینک اشتراک و scan-plan همه کار
+> کردند. در مقابل `worker.js` کامل از `node:async_hooks` استفاده می‌کند و
+> بدون فلگ بالا نمی‌آید.
 
 ### دربارهٔ `CLAIM_TOKEN`
 
@@ -499,8 +512,9 @@ npx wrangler dev --local
 | نشانه | علت | راه‌حل |
 |---|---|---|
 | `Not found` خالی در `/admin` | بایندینگ KV نیست یا نامش غلط است | نام را دقیقاً `KV` بگذارید |
-| خطای ۱۱۰۱ | معمولاً `nodejs_compat` نیست | بخش ۵ |
-| `No such module "node:async_hooks"` | همان بالا | فلگ را اضافه کنید |
+| خطای ۱۱۰۱ (Nova کامل) | `nodejs_compat` نیست | بخش ۵ |
+| خطای ۱۱۰۱ (nova-mini) | ربطی به فلگ ندارد؛ معمولاً کد ناقص پیست شده | کل فایل را دوباره پیست کنید و لاگ را در Observability ببینید |
+| `No such module "node:async_hooks"` | فقط Nova کامل | فلگ `nodejs_compat` را اضافه کنید |
 | `Add ?claim=...` | توکن در URL نیست یا غلط است | `?claim=<توکن>` را اضافه کنید |
 | به‌جای «Create password» صفحهٔ «Sign in» می‌بینم | setup قبلاً انجام شده | کلید `admin.json` را از KV پاک کنید |
 | وصل می‌شوم ولی اینترنت ندارم | `PROXYIP` ست نشده | یک PROXYIP معتبر بگذارید |
@@ -562,7 +576,8 @@ npx wrangler tail
 - `analysis/` و `node_modules/` هرگز کامیت نشوند
 - رمزها فقط با `wrangler secret put` یا Type=Secret در داشبورد — هرگز داخل
   `wrangler.jsonc`
-- `compatibility_flags: ["nodejs_compat"]` هرگز حذف نشود
+- در `wrangler.jsonc` **ریشه** (Nova کامل) فلگ `nodejs_compat` هرگز حذف نشود.
+  در `examples/nova-mini/wrangler.jsonc` این فلگ لازم نیست و عمداً حذف شده.
 
 ---
 
