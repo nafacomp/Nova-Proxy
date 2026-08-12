@@ -94,3 +94,22 @@ https://<worker>.<subdomain>.workers.dev/install?claim=<NOVA_CLAIM_TOKEN>
 
 اگر نسخه‌ای خراب شد:
 `Workers & Pages > ورکر شما > Deployments > Rollback`
+
+---
+
+## خطای 1101
+
+اگر با خطای 1101 مواجه شدید، اول این را بزنید:
+
+```bash
+curl -s https://<your-worker>/healthz
+```
+
+- **JSON برگشت** → ورکر سالم است، مشکل مصرف CPU است.
+- **باز هم 1101** → ورکر اصلاً بالا نمی‌آید، معمولاً `nodejs_compat` غایب است.
+
+تحلیل کامل، علت‌ها و متغیرهای مهار CPU در `ERROR-1101.fa.md` توضیح داده شده.
+
+⚠️ دو تنظیم در `wrangler.jsonc` را هرگز عوض نکنید:
+`compatibility_flags: ["nodejs_compat"]` و `compatibility_date` (۲۰۲۴-۰۹-۲۳ یا جدیدتر).
+`worker.js` از `node:async_hooks` ایمپورت می‌کند و بدون این فلگ اصلاً اجرا نمی‌شود.
